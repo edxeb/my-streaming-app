@@ -1,29 +1,19 @@
-Título: Sistema de Gestión de Streaming
 
-Descripción:
-Este repositorio contiene la planificación y estructura inicial del proyecto “Sistema de Gestión de Streaming”, desarrollado en Go con enfoque de programación funcional.
-En esta etapa se define el objetivo, alcance, módulos, modelo de datos y estructura modular del repositorio para futuras implementaciones.
+# Sistema de Gestión de Streaming
 
-Módulos planificados:
+Proyecto  en Go que simula una plataforma de streaming para administrar **usuarios** y **contenidos** (películas/series).
 
-Catálogo de contenido
+## Qué incluye
+- **Structs** para modelar Usuario, Película, Serie, Reproducción y la plataforma.
+- **Encapsulación**: atributos privados + getters/setters con validaciones.
+- **Manejo de errores**: las funciones retornan `error` cuando hay datos inválidos, duplicados o elementos inexistentes.
+- **Interfaces (Multimedia)** para aplicar **polimorfismo** y manejar películas/series en un mismo catálogo.
+- **Slices y maps** para almacenamiento, listados y búsquedas rápidas (por email e ID).
 
-Usuarios y suscripción
+## Funcionalidades
+- Registrar usuarios (evita duplicados por email).
+- Registrar contenido (película/serie) con plan requerido (free/premium).
+- Gestionar favoritos (agregar, quitar, listar).
+- Registrar reproducciones e historial.
+- Regla de negocio: usuario **free** no puede reproducir contenido **premium**.
 
-Mi Lista / Favoritos
-
-Historial de reproducciones (simulado)
-
-Estructura del repositorio:
-
-cmd/app: punto de entrada (menú principal)
-
-internal/models: modelos de datos
-
-internal/catalog: funciones de catálogo
-
-internal/users: funciones de usuarios
-
-internal/lists: funciones de “Mi Lista”
-
-internal/history: funciones de historial
