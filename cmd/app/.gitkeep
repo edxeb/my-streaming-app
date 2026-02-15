@@ -1,1 +1,615 @@
-placeholder
+/*
+@Autor: Edison
+@Fecha: 13/02/2026
+@Version: 2
+@Descripción: Sistema de Gestión de Streaming (Unidad 3: Interfaces, Encapsulación y Manejo de Errores)
+*/
+
+package main
+
+import (
+	"bufio"
+	"errors"
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+)
+
+// Multimedia define los comportamientos comunes que deben tener los contenidos
+// (Pelicula o Serie) para que la plataforma los trate igual (polimorfismo).
+type Multimedia interface {
+	GetId() int
+	GetTitulo() string
+	GetTipo() string
+	GetPlanRequerido() string
+	Detalle() string
+}
+
+// Usuario: atributos privados para que no se cambien directo.
+// La idea es usar setters y validar dentro del objeto.
+type Usuario struct {
+	id         int
+	nombre     string
+	email      string
+	contrasena string
+	tipoPlan   string
+	favoritos  []int
+}
+
+func (u *Usuario) GetId() int            { return u.id }
+func (u *Usuario) GetNombre() string     { return u.nombre }
+func (u *Usuario) GetEmail() string      { return u.email }
+func (u *Usuario) GetContrasena() string { return u.contrasena }
+func (u *Usuario) GetTipoPlan() string   { return u.tipoPlan }
+func (u *Usuario) GetFavoritos() []int   { return u.favoritos }
+
+func (u *Usuario) SetFavoritos(favs []int) { u.favoritos = favs }
+
+// El ID lo asigna la plataforma, por eso no lo expongo como setter público.
+func (u *Usuario) setId(id int) { u.id = id }
+
+// Setters con validación (encapsulación + errores)
+func (u *Usuario) SetNombre(nombre string) error {
+	nombre = strings.TrimSpace(nombre)
+	if nombre == "" {
+		return errors.New("el nombre no puede estar vacío")
+	}
+	u.nombre = nombre
+	return nil
+}
+
+func (u *Usuario) SetEmail(email string) error {
+	email = strings.TrimSpace(email)
+	if email == "" || !strings.Contains(email, "@") {
+		return errors.New("email inválido")
+	}
+	u.email = email
+	return nil
+}
+
+func (u *Usuario) SetContrasena(pw string) error {
+	pw = strings.TrimSpace(pw)
+	if len(pw) < 4 {
+		return errors.New("la contraseña es muy corta")
+	}
+	u.contrasena = pw
+	return nil
+}
+
+func (u *Usuario) SetTipoPlan(tipo string) error {
+	tipo = strings.ToLower(strings.TrimSpace(tipo))
+	if tipo != "free" && tipo != "premium" {
+		return errors.New("plan inválido (use: free o premium)")
+	}
+	u.tipoPlan = tipo
+	return nil
+}
+
+// Pelicula implementa Multimedia
+type Pelicula struct {
+	id            int
+	titulo        string
+	genero        string
+	duracionMin   int
+	planRequerido string
+}
+
+func (p *Pelicula) GetId() int               { return p.id }
+func (p *Pelicula) GetTitulo() string        { return p.titulo }
+func (p *Pelicula) GetTipo() string          { return "pelicula" }
+func (p *Pelicula) GetPlanRequerido() string { return p.planRequerido }
+
+func (p *Pelicula) Detalle() string {
+	return fmt.Sprintf("PELÍCULA: %s (%d min) - %s", p.titulo, p.duracionMin, p.genero)
+}
+
+// Registro en un solo método para no repetir muchos setters pequeños.
+func (p *Pelicula) SetDatos(titulo, genero string, duracion int, plan string) error {
+	titulo = strings.TrimSpace(titulo)
+	genero = strings.TrimSpace(genero)
+	plan = strings.ToLower(strings.TrimSpace(plan))
+
+	if titulo == "" {
+		return errors.New("título vacío")
+	}
+	if duracion <= 0 {
+		return errors.New("duración inválida")
+	}
+	if plan != "free" && plan != "premium" {
+		return errors.New("plan inválido")
+	}
+
+	p.titulo = titulo
+	p.genero = genero
+	p.duracionMin = duracion
+	p.planRequerido = plan
+	return nil
+}
+
+func (p *Pelicula) setId(id int) { p.id = id }
+
+// Serie implementa Multimedia
+type Serie struct {
+	id            int
+	titulo        string
+	genero        string
+	temporadas    int
+	planRequerido string
+}
+
+func (s *Serie) GetId() int               { return s.id }
+func (s *Serie) GetTitulo() string        { return s.titulo }
+func (s *Serie) GetTipo() string          { return "serie" }
+func (s *Serie) GetPlanRequerido() string { return s.planRequerido }
+
+func (s *Serie) Detalle() string {
+	return fmt.Sprintf("SERIE: %s (%d Temporadas) - %s", s.titulo, s.temporadas, s.genero)
+}
+
+func (s *Serie) SetDatos(titulo, genero string, temporadas int, plan string) error {
+	titulo = strings.TrimSpace(titulo)
+	genero = strings.TrimSpace(genero)
+	plan = strings.ToLower(strings.TrimSpace(plan))
+
+	if titulo == "" {
+		return errors.New("título vacío")
+	}
+	if temporadas <= 0 {
+		return errors.New("temporadas inválidas")
+	}
+	if plan != "free" && plan != "premium" {
+		return errors.New("plan inválido")
+	}
+
+	s.titulo = titulo
+	s.genero = genero
+	s.temporadas = temporadas
+	s.planRequerido = plan
+	return nil
+}
+
+func (s *Serie) setId(id int) { s.id = id }
+
+// Reproduccion guarda usuario + contenido usando la interfaz Multimedia.
+// Así no importa si es Pelicula o Serie, funciona igual.
+type Reproduccion struct {
+	id        int
+	usuario   *Usuario
+	contenido Multimedia
+	estado    string
+}
+
+func (r *Reproduccion) GetId() int               { return r.id }
+func (r *Reproduccion) GetUsuario() *Usuario     { return r.usuario }
+func (r *Reproduccion) GetContenido() Multimedia { return r.contenido }
+func (r *Reproduccion) GetEstado() string        { return r.estado }
+
+func (r *Reproduccion) setId(id int)              { r.id = id }
+func (r *Reproduccion) setUsuario(u *Usuario)     { r.usuario = u }
+func (r *Reproduccion) setContenido(c Multimedia) { r.contenido = c }
+func (r *Reproduccion) SetEstado(e string) error {
+	e = strings.ToLower(strings.TrimSpace(e))
+	if e != "en_curso" && e != "finalizado" && e != "visto" {
+		return errors.New("estado inválido")
+	}
+	r.estado = e
+	return nil
+}
+
+type PlataformaStreaming struct {
+	usuarios        []*Usuario
+	usuariosByEmail map[string]*Usuario
+
+	catalogo       []Multimedia
+	contenidosById map[int]Multimedia
+
+	reproducciones []*Reproduccion
+}
+
+// IDs con “max + 1” recorriendo slices. Para este proyecto en consola está bien.
+func siguienteIdUsuarios(lista []*Usuario) int {
+	max := 0
+	for _, u := range lista {
+		if u.GetId() > max {
+			max = u.GetId()
+		}
+	}
+	return max + 1
+}
+
+func siguienteIdContenidos(lista []Multimedia) int {
+	max := 0
+	for _, c := range lista {
+		if c.GetId() > max {
+			max = c.GetId()
+		}
+	}
+	return max + 1
+}
+
+func siguienteIdReproducciones(lista []*Reproduccion) int {
+	max := 0
+	for _, r := range lista {
+		if r.GetId() > max {
+			max = r.GetId()
+		}
+	}
+	return max + 1
+}
+
+func (p *PlataformaStreaming) AgregarUsuario(nombre, email, contrasena, tipoPlan string) error {
+	email = strings.TrimSpace(email)
+
+	// Duplicados: uso el email porque el nombre sí puede repetirse.
+	if _, existe := p.usuariosByEmail[email]; existe {
+		return errors.New("el usuario ya existe (email duplicado)")
+	}
+
+	usuario := &Usuario{}
+
+	// Valido dentro del objeto con setters para que el error salga de forma controlada.
+	if err := usuario.SetNombre(nombre); err != nil {
+		return err
+	}
+	if err := usuario.SetEmail(email); err != nil {
+		return err
+	}
+	if err := usuario.SetContrasena(contrasena); err != nil {
+		return err
+	}
+	if err := usuario.SetTipoPlan(tipoPlan); err != nil {
+		return err
+	}
+
+	usuario.setId(siguienteIdUsuarios(p.usuarios))
+	usuario.SetFavoritos([]int{})
+
+	p.usuarios = append(p.usuarios, usuario)
+	p.usuariosByEmail[email] = usuario
+
+	fmt.Println("Usuario agregado exitosamente.")
+	return nil
+}
+
+// valorNumerico es “duración” si es película o “temporadas” si es serie.
+// Lo hago así para no repetir lógica en dos funciones.
+func (p *PlataformaStreaming) AgregarContenido(titulo, tipo, genero string, valorNumerico int, planReq string) error {
+	tipo = strings.ToLower(strings.TrimSpace(tipo))
+
+	var nuevoItem Multimedia
+
+	// Creo una instancia según el tipo y la guardo como Multimedia.
+	// Luego al listar uso Detalle() y se comporta diferente según lo que sea realmente.
+	if tipo == "pelicula" {
+		peli := &Pelicula{}
+		if err := peli.SetDatos(titulo, genero, valorNumerico, planReq); err != nil {
+			return err
+		}
+		peli.setId(siguienteIdContenidos(p.catalogo))
+		nuevoItem = peli
+
+	} else if tipo == "serie" {
+		serie := &Serie{}
+		if err := serie.SetDatos(titulo, genero, valorNumerico, planReq); err != nil {
+			return err
+		}
+		serie.setId(siguienteIdContenidos(p.catalogo))
+		nuevoItem = serie
+
+	} else {
+		return errors.New("tipo inválido (use: pelicula o serie)")
+	}
+
+	p.catalogo = append(p.catalogo, nuevoItem)
+	p.contenidosById[nuevoItem.GetId()] = nuevoItem
+
+	fmt.Println("Contenido agregado exitosamente.")
+	return nil
+}
+
+func (p *PlataformaStreaming) AgregarFavorito(email string, contenidoId int) error {
+	email = strings.TrimSpace(email)
+
+	usuario, ok := p.usuariosByEmail[email]
+	if !ok {
+		return errors.New("usuario no registrado")
+	}
+
+	// Valido si el contenido existe usando el map.
+	_, ok = p.contenidosById[contenidoId]
+	if !ok {
+		return errors.New("contenido no registrado")
+	}
+
+	// Evito favoritos repetidos recorriendo el slice de IDs.
+	for _, id := range usuario.GetFavoritos() {
+		if id == contenidoId {
+			return errors.New("ya está en favoritos")
+		}
+	}
+
+	usuario.SetFavoritos(append(usuario.GetFavoritos(), contenidoId))
+	fmt.Println("Favorito agregado exitosamente.")
+	return nil
+}
+
+func (p *PlataformaStreaming) QuitarFavorito(email string, contenidoId int) error {
+	email = strings.TrimSpace(email)
+
+	usuario, ok := p.usuariosByEmail[email]
+	if !ok {
+		return errors.New("usuario no registrado")
+	}
+
+	favs := usuario.GetFavoritos()
+	nuevos := []int{}
+	encontrado := false
+
+	// No hay “remove” directo en slices, entonces filtro y copio todo menos el que quiero quitar.
+	for _, id := range favs {
+		if id == contenidoId {
+			encontrado = true
+			continue
+		}
+		nuevos = append(nuevos, id)
+	}
+
+	if !encontrado {
+		return errors.New("no encontrado en favoritos")
+	}
+
+	usuario.SetFavoritos(nuevos)
+	fmt.Println("Favorito eliminado.")
+	return nil
+}
+
+func (p *PlataformaStreaming) Reproducir(email string, contenidoId int, estado string) error {
+	email = strings.TrimSpace(email)
+
+	usuario, ok := p.usuariosByEmail[email]
+	if !ok {
+		return errors.New("usuario no registrado")
+	}
+
+	contenido, ok := p.contenidosById[contenidoId]
+	if !ok {
+		return errors.New("contenido no registrado")
+	}
+
+	// Regla principal: free no puede ver contenido premium.
+	if usuario.GetTipoPlan() == "free" && contenido.GetPlanRequerido() == "premium" {
+		return errors.New("requiere plan PREMIUM")
+	}
+
+	rep := &Reproduccion{}
+
+	// Estado lo valido porque es un dato que cambia al momento de reproducir.
+	if err := rep.SetEstado(estado); err != nil {
+		return err
+	}
+
+	rep.setId(siguienteIdReproducciones(p.reproducciones))
+	rep.setUsuario(usuario)
+	rep.setContenido(contenido)
+
+	p.reproducciones = append(p.reproducciones, rep)
+	fmt.Println("Reproduccion registrada.")
+	return nil
+}
+
+func (p *PlataformaStreaming) ListarUsuarios() {
+	fmt.Println("USUARIOS")
+	if len(p.usuarios) == 0 {
+		fmt.Println("Vacío.")
+		return
+	}
+	for _, u := range p.usuarios {
+		fmt.Printf("ID: %d | %s | %s | Plan: %s\n", u.GetId(), u.GetNombre(), u.GetEmail(), u.GetTipoPlan())
+	}
+}
+
+func (p *PlataformaStreaming) ListarCatalogo() {
+	fmt.Println("CATALOGO")
+	if len(p.catalogo) == 0 {
+		fmt.Println("Vacío.")
+		return
+	}
+	for _, c := range p.catalogo {
+		fmt.Printf("ID: %d | [%s] %s | Plan: %s\n", c.GetId(), c.GetTipo(), c.Detalle(), c.GetPlanRequerido())
+	}
+}
+
+func (p *PlataformaStreaming) ListarFavoritos(email string) error {
+	email = strings.TrimSpace(email)
+
+	usuario, ok := p.usuariosByEmail[email]
+	if !ok {
+		return errors.New("usuario no registrado")
+	}
+
+	fmt.Printf("FAVORITOS DE %s\n", usuario.GetNombre())
+
+	if len(usuario.GetFavoritos()) == 0 {
+		fmt.Println("Vacío.")
+		return nil
+	}
+
+	for _, id := range usuario.GetFavoritos() {
+		if c, ok := p.contenidosById[id]; ok {
+			fmt.Printf("- [%s] %s\n", c.GetTipo(), c.GetTitulo())
+		}
+	}
+	return nil
+}
+
+func (p *PlataformaStreaming) ListarReproducciones() {
+	fmt.Println("HISTORIAL")
+	if len(p.reproducciones) == 0 {
+		fmt.Println("Vacío.")
+		return
+	}
+	for _, r := range p.reproducciones {
+		fmt.Printf("ID: %d | User: %s | Viendo: %s | Estado: %s\n",
+			r.GetId(), r.GetUsuario().GetEmail(), r.GetContenido().GetTitulo(), r.GetEstado())
+	}
+}
+
+func menu() {
+	fmt.Println("\nMenu")
+	fmt.Println("1. Agregar usuario")
+	fmt.Println("2. Agregar contenido")
+	fmt.Println("3. Listar usuarios")
+	fmt.Println("4. Listar catalogo")
+	fmt.Println("5. Agregar favorito")
+	fmt.Println("6. Quitar favorito")
+	fmt.Println("7. Listar favoritos")
+	fmt.Println("8. Reproducir contenido")
+	fmt.Println("9. Listar reproducciones")
+	fmt.Println("10. Salir")
+	fmt.Print("Seleccione una opcion: ")
+}
+
+// Con Scanner leo líneas completas, así el usuario puede escribir textos con espacios.
+func leerTexto(sc *bufio.Scanner) string {
+	sc.Scan()
+	return strings.TrimSpace(sc.Text())
+}
+
+// Scanner lee todo como texto, entonces cuando quiero un número tengo que convertirlo.
+// strconv.Atoi convierte "8" (string) a 8 (int). Si el texto no es número, devuelve error.
+func leerEntero(sc *bufio.Scanner) (int, error) {
+	txt := leerTexto(sc)
+	n, err := strconv.Atoi(txt)
+	if err != nil {
+		return 0, errors.New("valor numerico invalido")
+	}
+	return n, nil
+}
+
+func main() {
+	plataforma := &PlataformaStreaming{
+		usuarios:        []*Usuario{},
+		usuariosByEmail: map[string]*Usuario{},
+		catalogo:        []Multimedia{},
+		contenidosById:  map[int]Multimedia{},
+		reproducciones:  []*Reproduccion{},
+	}
+
+	scanner := bufio.NewScanner(os.Stdin)
+
+	for {
+		menu()
+
+		// El menú se lee como texto y luego lo convierto a int para usar switch.
+		opTxt := leerTexto(scanner)
+		opcion, err := strconv.Atoi(opTxt)
+		if err != nil {
+			fmt.Println("Opcion invalida")
+			continue
+		}
+
+		switch opcion {
+		case 1:
+			fmt.Print("Nombre: ")
+			nombre := leerTexto(scanner)
+			fmt.Print("Email: ")
+			email := leerTexto(scanner)
+			fmt.Print("Contrasena: ")
+			contrasena := leerTexto(scanner)
+			fmt.Print("Tipo de plan (free/premium): ")
+			tipoPlan := leerTexto(scanner)
+
+			if err := plataforma.AgregarUsuario(nombre, email, contrasena, tipoPlan); err != nil {
+				fmt.Println("Error:", err)
+			}
+
+		case 2:
+			fmt.Print("Titulo: ")
+			titulo := leerTexto(scanner)
+			fmt.Print("Tipo (pelicula/serie): ")
+			tipo := leerTexto(scanner)
+			fmt.Print("Genero: ")
+			genero := leerTexto(scanner)
+
+			fmt.Print("Duracion (min) o Temporadas (num): ")
+			valorNumerico, err := leerEntero(scanner)
+			if err != nil {
+				fmt.Println("Error:", err)
+				break
+			}
+
+			fmt.Print("Plan requerido (free/premium): ")
+			planReq := leerTexto(scanner)
+
+			if err := plataforma.AgregarContenido(titulo, tipo, genero, valorNumerico, planReq); err != nil {
+				fmt.Println("Error:", err)
+			}
+
+		case 3:
+			plataforma.ListarUsuarios()
+
+		case 4:
+			plataforma.ListarCatalogo()
+
+		case 5:
+			fmt.Print("Email del usuario: ")
+			email := leerTexto(scanner)
+			fmt.Print("ID del contenido: ")
+			contenidoId, err := leerEntero(scanner)
+			if err != nil {
+				fmt.Println("Error:", err)
+				break
+			}
+			if err := plataforma.AgregarFavorito(email, contenidoId); err != nil {
+				fmt.Println("Error:", err)
+			}
+
+		case 6:
+			fmt.Print("Email del usuario: ")
+			email := leerTexto(scanner)
+			fmt.Print("ID del contenido: ")
+			contenidoId, err := leerEntero(scanner)
+			if err != nil {
+				fmt.Println("Error:", err)
+				break
+			}
+			if err := plataforma.QuitarFavorito(email, contenidoId); err != nil {
+				fmt.Println("Error:", err)
+			}
+
+		case 7:
+			fmt.Print("Email del usuario: ")
+			email := leerTexto(scanner)
+			if err := plataforma.ListarFavoritos(email); err != nil {
+				fmt.Println("Error:", err)
+			}
+
+		case 8:
+			fmt.Print("Email del usuario: ")
+			email := leerTexto(scanner)
+			fmt.Print("ID del contenido: ")
+			contenidoId, err := leerEntero(scanner)
+			if err != nil {
+				fmt.Println("Error:", err)
+				break
+			}
+			fmt.Print("Estado (en_curso/finalizado/visto): ")
+			estado := leerTexto(scanner)
+
+			if err := plataforma.Reproducir(email, contenidoId, estado); err != nil {
+				fmt.Println("Error:", err)
+			}
+
+		case 9:
+			plataforma.ListarReproducciones()
+
+		case 10:
+			fmt.Println("Saliendo...")
+			return
+
+		default:
+			fmt.Println("Opcion invalida")
+		}
+	}
+}
